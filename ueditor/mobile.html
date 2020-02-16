@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport"
+		content=" width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=0">
+	<link rel="stylesheet" type="text/css" href="./main.css">
+	<style>
+		html,
+		body {
+			padding: 0;
+			margin: 0;
+			width: 100vw;
+			font-size: 32px;
+			background-color: #fdfeff;
+		}
+
+		.hgzp-main {
+			padding: 20px 10px;
+			height: 50vh;
+			max-width: calc(100vw - 20px);
+			margin: 0 auto;
+			overflow-y: hidden;
+			overflow-x: scroll;
+			-moz-writing-mode: vertical-lr;
+			-webkit-writing-mode: vertical-lr;
+			-o-writing-mode: vertical-lr;
+			writing-mode: vertical-lr;
+			-ms-writing-mode: tb-lr;
+			writing-mode: tb-lr;
+			-webkit-text-orientation: sideways-right;
+			text-orientation: sideways-right;
+			border-bottom: 1px dashed gray;
+			text-align: justify;
+			word-break: normal;
+			word-wrap: normal;
+		}
+
+		.hgzp-main>* {
+			vertical-align: top;
+		}
+
+		.hgzp-main img {
+			max-width: calc(100vw - 20px);
+			max-height: 100%;
+			height: auto;
+			width: auto;
+		}
+
+		*::-webkit-scrollbar {
+			display: none
+		}
+
+		.newstitle {
+			font-size: 125%;
+			padding: 8PX;
+			text-align: left;
+			color: #074A67;
+		}
+
+		.newsTimeAuthor {
+			color: #666;
+			text-align: right;
+			border-right: 2px solid #3eabe7;
+			font-size: 0.75em;
+			background-color: #F3F3F3;
+		}
+
+		.newsTimeAuthor .col {
+			padding-bottom: 12px;
+		}
+
+		.comment {
+			height: 60vh;
+			list-style: none;
+			font-size: 0.75em;
+			padding: 0px;
+		}
+
+		.comment li {
+			border-right: 1px solid #aaa;
+			padding: 12px 6px;
+		}
+
+		.comment li .user {
+			color: #69e;
+			border-right: 1px dashed #eee;
+			padding: 6px;
+			position: relative;
+			font-size: 0.75em;
+		}
+
+		.comment li .user img {
+			width: 2em;
+		}
+
+		.comment li .user .name {
+			padding-top: 12px;
+			display: inline-block;
+			padding-left: 0.5em;
+			vertical-align: bottom;
+		}
+
+		.comment li .user .time {
+			position: absolute;
+			bottom: 0;
+			left: 1em;
+			color: gray
+		}
+
+		.comment li .content {
+			padding: 8px;
+			margin-top: 1em;
+			padding-top: 1em;
+			border-top: 1px dashed #eee;
+		}
+	</style>
+	<script type="text/javascript">
+		// 屏幕显示区域可用宽度
+		var availWidth = window.innerWidth - 20;
+		/**
+		 * @param {HTMLElement} current
+		 * @param {HTMLElement} appEle
+		 * @reurn  {boolean} true表示完成
+		 */
+		function handle(current, appEle, splited) {
+			if (!current) {
+				return true;
+			}
+			var nd = current.firstChild
+			var sp = splited;
+			while (nd) {
+				var next = nd.nextSibling;
+				appEle.appendChild(nd.cloneNode(true))
+				if (document.body.lastElementChild.scrollWidth <= availWidth + 20) { //最后一个节点没有出现滚动，说明可以直接添加该节点
+					current.removeChild(nd)
+				} else if (!sp && document.body.lastElementChild.scrollWidth <= availWidth * 1.2 +
+					20) { //出现滚动，并且滚动区域较小，有机会进行拉长调整
+					for (var i = 0; i < 6; ++i) { // 拉长调整最多5次，如果没有了滚动，则可以添加
+						if (document.body.lastElementChild.scrollWidth <= availWidth) {
+							break
+						}
+						// 每次拉长 高度的1.1倍
+						document.body.lastElementChild.style.height = parseFloat(window.getComputedStyle(document.body
+							.lastElementChild).height) * 1.1 + 'px'
+						if (i > 4) { // 拉长5次后，扔有滚动，则加到下一个段落
+							document.body.lastElementChild.style.height = '50vh'
+							sp = true
+						}
+					}
+					if (!sp) {
+						current.removeChild(nd)
+						return false
+					} else {
+						appEle.removeChild(appEle.lastChild);
+						continue;
+					}
+				} else {
+					appEle.removeChild(appEle.lastChild);
+					if (nd.nodeType === 3) { //文本节点
+						if (nd.textContent.match(/(\n)|([ ].)/)) { // 检测是否可以分行或分词
+							var ele = current.cloneNode()
+							nd.textContent.split('\n').forEach(ph => { // 分行
+								ph.split(' ').forEach(sv => { // 分词
+									var eleSub = document.createElement('span')
+									eleSub.textContent = sv + ' '
+									ele.appendChild(eleSub)
+								})
+								ele.appendChild(document.createElement('br')) //断行
+							})
+							ele.setAttribute('hgzp-add-super', 'true') //自定义属性，用于后期删除
+							nd.replaceWith(ele)
+							handle(current, appEle, true);
+							var cEle = current;
+							while (cEle) { //出去断开节点的首行缩进
+								cEle.style.removeProperty('text-indent')
+								cEle = cEle.parentElement;
+							}
+						}
+						return false
+					} else {
+						// 特殊节点，不能拆分，直接添加
+						if (['IMG', 'VIDEO', 'AUDIO', 'TABLE', 'IFRAME', 'OL', 'PRE'].some(v => v === nd.nodeName)) {
+							if (nd.getBoundingClientRect().width < availWidth / 2) {
+								return false
+							}
+							var imgEle = document.createElement('div')
+							imgEle.className = 'hgzp-main'
+							imgEle.style.height = 'auto'
+							imgEle.style.maxHeight = 'none'
+							imgEle.style.width = '100%'
+							nd.style.width = '100%'
+							nd.style.maxHeight = 'none'
+							if (nd.nodeName === 'IFRAME') {
+								nd.style.height = 'auto'
+							}
+							if (nd.nodeName === 'OL') {
+								nd.style.maxHeight = '100vh'
+							}
+							nd.style.margin = '0'
+							nd.style.border = 'none'
+							imgEle.appendChild(current.removeChild(nd))
+							document.body.appendChild(imgEle)
+							return false
+						}
+						var nEle = nd.cloneNode()
+						appEle.appendChild(nEle);
+						handle(nd, nEle, sp);
+					}
+					return false
+				}
+				nd = next;
+			}
+			return true;
+		}
+		// 重排
+		function updateDate(v, root) {
+			//最多重排500 次，防止死循环
+			for (var i = 0; i < 1000; ++i) {
+				var appEle = document.createElement('div')
+				appEle.className = 'hgzp-main'
+				document.body.appendChild(appEle)
+				if (handle(root, appEle)) {
+					break
+				}
+				//压缩节点高度，考虑性能可以去掉
+				if (appEle.textContent.trim().length > 0 && appEle.querySelectorAll('img,video,audio').length === 0) {
+					for (var j = 0; j < 6; ++j) {
+						if (appEle.clientHeight < 200) {
+							break
+						}
+						const h = appEle.style.height;
+						appEle.style.height = (appEle.clientHeight - window.innerHeight / 12) + 'px';
+						if (appEle.scrollWidth > availWidth + 20) {
+							appEle.style.height = h;
+							break;
+						}
+					}
+				}
+				//添加的span节点还原
+				Array.from(document.querySelectorAll('[hgzp-add-super]')).forEach(v => {
+					v.replaceWith(v.textContent)
+					v.removeAttribute('hgzp-add-super')
+				})
+			}
+			Array.from(document.querySelectorAll('.hgzp-main')).forEach(v => {
+				if (v.textContent.trim().length === 0 && v.querySelectorAll('img,video,audio').length ===
+					0) { // 空白段落删除
+					v.parentElement.removeChild(v)
+				} else { // 宽度拉伸，居中则去掉拉伸
+					//v.style.width = '100%'
+				}
+			});
+		}
+		async function setContent(v) {
+			var root = document.createElement('div')
+			root.innerHTML = v || ''
+			root.className = 'hgzp-main'
+			root.setAttribute('hgzp-placeholder', 'true')
+			root.style.height = 'calc(100vh - 40px)';
+			document.body.appendChild(root);
+			var count = 0
+			//可以进一步特殊处理，占位符,目前统一是图片占位
+			var medias = root.querySelectorAll('img,video');
+			var eleLoading = document.createElement('img')
+			eleLoading.src = '../loading.gif'
+			eleLoading.style.width = availWidth + 'px'; //拉伸占位符宽度
+			Array.from(medias).forEach(ele => {
+				//防止加载过快检测不到，创建克隆节点检测
+				var listenEle = ele.cloneNode(true)
+				var holder = eleLoading.cloneNode()
+				listenEle.onload = e => {
+					count += 1
+					if (count === medias.length) {
+						var rootUpdated = document.createElement('div');
+						rootUpdated.innerHTML = v || '';
+						rootUpdated.className = 'hgzp-main';
+						document.body.innerHTML = '';
+						document.body.appendChild(rootUpdated);
+						updateDate(v, rootUpdated);
+					}
+					//如果被替换成加载图片，还原
+					if (listenEle.hasAttribute('replaced')) {
+						holder.replaceWith(listenEle)
+					} else {
+						delete listenEle;
+						delete holder;
+					}
+				}
+				listenEle.onerror = e => {
+					count += 1
+					if (count === medias.length) {
+						var rootUpdated = document.createElement('div');
+						rootUpdated.innerHTML = v || '';
+						rootUpdated.className = 'hgzp-main';
+						document.body.innerHTML = '';
+						document.body.appendChild(rootUpdated);
+						updateDate(v, root);
+					}
+					if (listenEle.hasAttribute('replaced')) {
+						holder.replaceWith(listenEle)
+					} else {
+						delete listenEle;
+						delete holder;
+					}
+				}
+				listenEle.oncanplaythrough = e => {
+					count += 1
+					if (count === medias.length) {
+						var rootUpdated = document.createElement('div');
+						rootUpdated.innerHTML = v || '';
+						rootUpdated.className = 'hgzp-main';
+						document.body.innerHTML = '';
+						document.body.appendChild(rootUpdated);
+						updateDate(v, root);
+					}
+					if (listenEle.hasAttribute('replaced')) {
+						holder.replaceWith(listenEle)
+					} else {
+						delete listenEle;
+						delete holder;
+					}
+				}
+				//判断是否有宽度样式
+				if (window.getComputedStyle(ele).width === '0px') {
+					ele.replaceWith(holder);
+					listenEle.style.width = availWidth + 'px'; //重设宽度防止页面有大的排版样式更改
+					listenEle.setAttribute('replaced', 'true');
+				}
+			})
+			updateDate(v, root)
+			if (top !== window) {
+				top.postMessage('mobild-loaded', '*')
+			}
+		}
+
+		function setContentUrlencoding(v) {
+			availWidth = window.innerWidth - 20;
+			setContent(decodeURIComponent(v))
+		}
+		//设置正文消息
+		window.addEventListener('message', function (e) {
+			availWidth = window.innerWidth - 20;
+			setContent(e.data.data)
+		});
+		/**
++ `<ol class="comment">${new Array(100).fill(1).map((v,i)=>
+	`<li><div class="user"><img src="https://ss0.bdstatic.com/70cFvHSh_Q1YnxGkpoWK1HF6hhy/it/u=87139683,2899261485&fm=26&gp=0.jpg"/><div class="name">ᠨᠠᠢᠷ ᠨᠠᠭᠠᠲᠤᠮ</div><div class="time">2018-12-12</div></div><div class="content">${i+1}<span style="transform:rotate(-90deg);display:inline-block">楼</span><span style="transform:rotate(-90deg);display:inline-block">回</span><span style="transform:rotate(-90deg);display:inline-block">复</span>:ᠨᠠᠢᠷ ᠨᠠᠭᠠᠲᠤᠮ ᠵᠤᠬᠢᠶᠠᠨ ᠪᠠᠢᠭᠤᠯᠵᠤ ᠪᠠᠢᠬᠤ ᠨᠢ ᠨᠤᠲᠤᠭ ᠤᠰᠤᠨ ᠡᠴᠡ ᠪᠠᠨ ᠬᠤᠯᠠ ᠠᠵᠢᠯᠯᠠᠵᠤ ᠠᠮᠢᠲᠤᠷᠠᠵᠤ ᠰᠤᠷᠤᠯᠴᠠᠵᠤ ᠪᠠᠢᠬᠤ ᠬᠦᠮᠦᠰ ᠤᠨ ᠨᠤᠲᠤᠭ ᠶᠢᠡᠨ ᠲᠤᠷᠠᠰᠤᠨ ᠰᠠᠨᠠᠭᠠᠯᠵᠠᠭᠰᠠᠨ᠂</div></li>`).join('')
+}</ol>`
+**/
+	</script>
+</head>
+
+<body>
+	<script>
+		const font = new window.FontFace('fontFamilyName', 'url(./HGMWXB_NMBS.TTF)');
+		document.fonts.add(font);
+		font.load().then(info => {
+			document.body.style.fontFamily = 'fontFamilyName';
+		}).catch(err => {});
+	</script>
+</body>
+
+</html>
